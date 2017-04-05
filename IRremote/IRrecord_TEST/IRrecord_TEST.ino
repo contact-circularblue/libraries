@@ -18,7 +18,7 @@
 #include <IRremote.h>
 
 int RECV_PIN = A0;
-int BUTTON_PIN = A1;
+int BUTTON_PIN = 2;
 int STATUS_PIN = 13;
 
 IRrecv irrecv(RECV_PIN);
@@ -142,29 +142,11 @@ void sendCode(int repeat) {
 
 int lastButtonState;
 
+
+
+
 void loop() {
-  // If button pressed, send the code.
-  int buttonState = digitalRead(BUTTON_PIN);
-  if (lastButtonState == HIGH && buttonState == LOW) {
-    Serial.println("Released");
-    irrecv.enableIRIn(); // Re-enable receiver
-  }
-  if (buttonState) {
-    while (1)
-    {
-      if (buttonState)
-      {
-        Serial.println("Pressed, sending");
-        digitalWrite(STATUS_PIN, HIGH);
-        sendCode(lastButtonState == buttonState);
-        digitalWrite(STATUS_PIN, LOW);
-        delay(50); // Wait a bit between retransmissions
-
-      }
-
-    }
-  }
-  else if (irrecv.decode(&results)) {
+  if (irrecv.decode(&results)) {
     decode_results *got_results = &results;
     if (got_results->bits > 0)
     {
@@ -175,8 +157,20 @@ void loop() {
       irrecv.resume(); // resume receiver
       digitalWrite(STATUS_PIN, LOW);
     }
+    
+    
+    delay(1000);
+    for(int i=0;i<5;i++)
+    {
+    Serial.println("Pressed, sending");
+        digitalWrite(STATUS_PIN, HIGH);
+        sendCode(0);
+        digitalWrite(STATUS_PIN, LOW);
+        delay(2000); // Wait a bit between retransmissions
+    }
+    irrecv.enableIRIn();
   }
-  lastButtonState = buttonState;
+
 }
 
 

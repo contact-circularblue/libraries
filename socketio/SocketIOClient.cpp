@@ -39,6 +39,7 @@ String Rname = "";
 String Rcontent = "";
 String rcvd_msg_full="";
 bool socket_connected;
+int flag=0;
 
 
 bool SocketIOClient::connect(char thehostname[], int theport) {
@@ -88,8 +89,9 @@ void SocketIOClient::parser(int index) {
 	//Serial.println(sizemsg);			//Can be used for debugging
 	for (int i = index + 2; i < index + sizemsg + 2; i++)
 		rcvdmsg += (char)databuffer[i];
-	//Serial.print("Received message = ");	//Can be used for debugging
-	//Serial.println(rcvdmsg);				//Can be used for debugging
+	
+	Serial.print("Received message = ");	//Can be used for debugging //---------------------
+	Serial.println(rcvdmsg);				//Can be used for debugging //---------------------
 
 	rcvd_msg_full=rcvdmsg;
 
@@ -131,7 +133,8 @@ bool SocketIOClient::monitor() {
 	*databuffer = 0;
 
 	if (!client.connected()) {
-		//Serial.println("NOT CONNECTED");
+		Serial.println("NOT CONNECTED");
+		flag=1;
 		if (!client.connect(hostname, port)) return 0;
 	}
 
@@ -152,10 +155,14 @@ bool SocketIOClient::monitor() {
 		dataptr = databuffer;
 		index = tmp.indexOf((char)129);	//129 DEC = 0x81 HEX = sent for proper communication
 		index2 = tmp.indexOf((char)129,index+1);
-		/*Serial.print("Index = ");			//Can be used for debugging
+
+
+		Serial.print("Index = ");			//Can be used for debugging
 		Serial.print(index);
 		Serial.print(" & Index2 = ");
-		Serial.println(index2);*/
+		Serial.println(index2);
+
+
 		if (index != -1)
 		{
 			parser(index);
@@ -164,6 +171,9 @@ bool SocketIOClient::monitor() {
 		{
 			parser(index2);
 		}
+		if(index==-1 && index2==-1)
+			flag=1;
+		
 	}
 	return 1;
 }
@@ -173,10 +183,10 @@ void SocketIOClient::setDataArrivedDelegate(DataArrivedDelegate newdataArrivedDe
 }
 
 void SocketIOClient::sendHandshake(char hostname[]) {
-	client.println(F("GET /socket.io/1/?transport=polling&b64=true HTTP/1.1"));
-	client.print(F("Host: "));
+	client.println(("GET /socket.io/1/?transport=polling&b64=true HTTP/1.1"));
+	client.print(("Host: "));
 	client.println(hostname);
-	client.println(F("Origin: Arduino\r\n"));
+	client.println(("Origin: Arduino\r\n"));
 }
 
 bool SocketIOClient::waitForInput(void) {
@@ -224,29 +234,56 @@ bool SocketIOClient::readHandshake() {
 	}
 	Serial.println(F("Connecting via Websocket"));
 
-	client.print(F("GET /socket.io/1/websocket/?transport=websocket&b64=true&sid="));
-	client.print(sid);
-	client.print(F(" HTTP/1.1\r\n"));
+	client.print(("GET /socket.io/1/websocket/?transport=websocket&b64=true&sid="));
 
-	client.print(F("Host: "));
+	//Serial.println(F("1"));
+
+	client.print(sid);
+	client.print((" HTTP/1.1\r\n"));
+
+	//Serial.println(F("2"));
+
+	client.print(("Host: "));
 	client.print(hostname);
 	client.print("\r\n");
-	client.print(F("Origin: ArduinoSocketIOClient\r\n"));
-	client.print(F("Sec-WebSocket-Key: "));
+
+	//Serial.println(F("3"));
+
+	client.print(("Origin: ArduinoSocketIOClient\r\n"));
+
+	//Serial.println(("4"));
+
+	client.print(("Sec-WebSocket-Key: "));
 	client.print(sid);
 	client.print("\r\n");
-	client.print(F("Sec-WebSocket-Version: 13\r\n"));
-	client.print(F("Upgrade: websocket\r\n"));	// must be camelcase ?!
-	client.println(F("Connection: Upgrade\r\n"));
+
+	//Serial.println(F("5"));
+
+	client.print(("Sec-WebSocket-Version: 13\r\n"));
+
+	//Serial.println(F("6"));
+
+	client.print(("Upgrade: websocket\r\n"));	// must be camelcase ?!
+
+	//Serial.println(F("7"));
+
+	client.println(("Connection: Upgrade\r\n"));
+
+	//Serial.println(F("8"));
 
 
+	//Serial.println(F("WAITING...."));//-------------------
 
-
-	if (!waitForInput()) return false;
+	if (!waitForInput()) 
+		{
+			Serial.println(F("WaitForInput==FALSE"));//-------------------
+			return false;
+	}
 	readLine();
 	if (atoi(&databuffer[9]) != 101) {	// check for "HTTP/1.1 101 response, means Updrage to Websocket OK
 		while (client.available()) readLine();
 		client.stop();
+		Serial.println(F("101 condition"));//-------------------
 		return false;
 	}
 	readLine();
@@ -287,6 +324,98 @@ bool SocketIOClient::readHandshake() {
 
 	monitor();		// treat the response as input
 	return true;
+}
+
+bool SocketIOClient::reconnect_socket()
+{
+	Serial.println(F("Connecting via Websocket"));
+
+	client.print(("GET /socket.io/1/websocket/?transport=websocket&b64=true&sid="));
+
+	//Serial.println(F("1"));
+
+	client.print(sid);
+	client.print((" HTTP/1.1\r\n"));
+
+	//Serial.println(F("2"));
+
+	client.print(("Host: "));
+	client.print(hostname);
+	client.print("\r\n");
+
+	//Serial.println(F("3"));
+
+	client.print(("Origin: ArduinoSocketIOClient\r\n"));
+
+	//Serial.println(("4"));
+
+	client.print(("Sec-WebSocket-Key: "));
+	client.print(sid);
+	client.print("\r\n");
+
+	//Serial.println(F("5"));
+
+	client.print(("Sec-WebSocket-Version: 13\r\n"));
+
+	//Serial.println(F("6"));
+
+	client.print(("Upgrade: websocket\r\n"));	// must be camelcase ?!
+
+	//Serial.println(F("7"));
+
+	client.println(("Connection: Upgrade\r\n"));
+
+	if (!waitForInput()) 
+		{
+			Serial.println(F("WaitForInput==FALSE"));//-------------------
+			return false;
+	}
+	readLine();
+	if (atoi(&databuffer[9]) != 101) {	// check for "HTTP/1.1 101 response, means Updrage to Websocket OK
+		while (client.available()) readLine();
+		client.stop();
+		Serial.println(F("101 condition"));//-------------------
+		return false;
+	}
+	readLine();
+	readLine();
+	readLine();
+	for (int i = 0; i < 28; i++)
+	{
+		key[i] = databuffer[i + 22];	//key contains the Sec-WebSocket-Accept, could be used for verification
+	}
+
+
+	eatHeader();
+
+
+	/*
+		Generating a 32 bits mask requiered for newer version
+		Client has to send "52" for the upgrade to websocket
+	*/
+	randomSeed(analogRead(0));
+	String mask = "";
+	String masked = "52";
+	String message = "52";
+	for (int i = 0; i < 4; i++)	//generate a random mask, 4 bytes, ASCII 0 to 9
+	{
+		char a = random(48, 57);
+		mask += a;
+	}
+
+	for (int i = 0; i < message.length(); i++)
+		masked[i] = message[i] ^ mask[i % 4];	//apply the "mask" to the message ("52")
+
+
+
+	client.print((char)0x81);	//has to be sent for proper communication
+	client.print((char)130);	//size of the message (2) + 128 because message has to be masked
+	client.print(mask);
+	client.print(masked);
+
+	monitor();	
+
+
 }
 
 void SocketIOClient::readLine() {

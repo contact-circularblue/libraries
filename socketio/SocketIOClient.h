@@ -50,6 +50,7 @@ public:
 	void send(String RID, String Rname, String Rcontent);
 	void heartbeat(int select);
 	void sendJSON(String RID, String JSON);
+	bool reconnect_socket();
 private:
 	void parser(int index);
 	void sendHandshake(char hostname[]);
@@ -69,4 +70,5 @@ private:
 	void terminateCommand(void);
 	bool waitForInput(void);
 	void eatHeader(void);
+	
 };
